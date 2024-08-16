@@ -1,0 +1,38 @@
+!pip install datasets
+from datasets import load_dataset
+!pip install transformers
+from transformers import AutoTokenizer , DataCollatorWithPadding , AutoModelForSequenceClassification , TrainingArguments , Trainer
+dataset = load_dataset("glue" , "sst2")
+checkpoint = "bert-base-uncased"
+model = AutoModelForSequenceClassification.from_pretrained(checkpoint)
+tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+print(dataset)
+def tokenize_function(ex):
+  return tokenizer(ex["sentence"] , truncation = True)
+tokenized_datasets = dataset.map(tokenize_function , batched = True)
+data_collator = DataCollatorWithPadding(tokenizer = tokenizer)
+trainig_args = TrainingArguments("test-trainer")
+!pip install evaluate
+import evaluate
+
+def compute_metrics(eval_pred):
+  metric = evaluate.load("glue" , "sst2")
+  logits , labels = eval_preds
+  predictions = np.argmax(logits ,axis = -1)
+  return metric.compute(predictions = predictions  , references = labels)
+
+training_args = TrainingArguments("test-trainer" , evaluation_strategy= "epoch")
+
+
+trainer = Trainer(
+    model,
+    training_args,
+    train_dataset = tokenized_datasets["train"],
+    eval_dataset = tokenized_datasets["validation"],
+    data_collator = data_collator,
+    tokenizer = tokenizer,
+    compute_metrics = compute_metrics,
+
+)
+
+trainer.train()
